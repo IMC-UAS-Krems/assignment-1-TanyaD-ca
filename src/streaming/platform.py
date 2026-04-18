@@ -17,7 +17,8 @@ from .albums import Album
 from .playlists import Playlist, CollaborativePlaylist
 from .sessions import ListeningSession
 class StreamingPlatform:
-    def __init__(self) -> None :
+    def __init__(self, name: str) -> None :
+        self.name = name
         self._tracks: dict[str, Track] = {}
         self._users: dict[str, User] = {}
         self._artists: dict[str, Artist] = {}
@@ -38,23 +39,23 @@ class StreamingPlatform:
         self._albums[album.album_id] = album
 
     def add_playlist(self, playlist: Playlist) -> None:
-        self._playlists[playlist.id] = playlist
+        self._playlists[playlist.playlist_id] = playlist
 
     def record_session(self, session: ListeningSession):
         self._sessions.append(session)
 
 
-    def get_track(self, id: str):
-        return self._tracks.get(id)
+    def get_track(self, track_id: str):
+        return self._tracks.get(track_id)
 
-    def get_user(self, id: str):
-        return self._users.get(id)
+    def get_user(self, user_id: str):
+        return self._users.get(user_id)
 
-    def get_artist(self, id: str):
-        return self._artists.get(id)
+    def get_artist(self, artist_id: str):
+        return self._artists.get(artist_id)
 
-    def get_album(self, id: str):
-        return self._albums.get(id)
+    def get_album(self, album_id: str):
+        return self._albums.get(album_id)
 
 
     def all_users(self) -> list[User]:
@@ -75,7 +76,7 @@ class StreamingPlatform:
 
     # Q2: Average Unique Tracks per Premium User
     def avg_unique_tracks_per_premium_user(self, days: int = 30) -> float:
-        our_date = datetime.now() - timedelta(days=days)
+        our_date = datetime.now() - timedelta(days=days) # time range (last N days)
         users = []
         for user in self._users.values():
             if isinstance(user, PremiumUser):
@@ -86,8 +87,9 @@ class StreamingPlatform:
         for user in users:
             tracks = set()
             for session in self._sessions:
+                # only sessions for this user during the specified time period
                 if session.user == user and session.timestamp >= our_date:
-                    tracks.add(session.track.id)
+                    tracks.add(session.track.track_id)
             counts.append(len(tracks))
         total = 0
         for i in counts:
@@ -116,14 +118,16 @@ class StreamingPlatform:
     def avg_session_duration_by_user_type(self) -> list[tuple[str, float]]:
         data = {}
         for i in self._sessions:
+            # Get the user's class name
             user_type = type(i.user).__name__
             if user_type not in data:
                 data[user_type] = []
+                # Add the session duration to the list of this type
             data[user_type].append(i.duration_seconds)
         result = []
         for user_type in data:
             durations = data[user_type]
-            average = sum(durations) / len(durations)
+            average = sum(durations) / len(durations) # Calculate the average
             result.append((user_type, average))
         result.sort(key=lambda x: x[1], reverse = True) # the list is sorted by the second value in each tuple, in descending order
         return result
@@ -150,7 +154,7 @@ class StreamingPlatform:
         for artist in data:
             minutes = data[artist] / 60
             result.append((artist, minutes))
-        result.sort(key=lambda x: x[1], reverse = True)
+        result.sort(key=lambda x: x[1], reverse = True) # Sort by descending time
         return result[:n]
 
     # Q7: User's Top Genre
@@ -158,7 +162,7 @@ class StreamingPlatform:
         user = self._users.get(user_id)
         if not user:
             return None
-        data = {}
+        data = {} # genre are transmitted in seconds
         total = 0
         for session in self._sessions:
             if session.user == user:
@@ -169,13 +173,14 @@ class StreamingPlatform:
                 total = total + session.duration_seconds
         if total == 0:
             return None
+        # Find the genre with the longest duration
         top_genre = None
         top_duration = 0
         for genre in data:
             if data[genre] > top_duration:
                 top_duration = data[genre]
                 top_genre = genre
-        percentage = (top_duration / total) * 100
+        percentage = (top_duration / total) * 100 # percentage of total time
         return top_genre, percentage
 
     # Q8: Collaborative Playlists with Many Artists
@@ -215,6 +220,7 @@ class StreamingPlatform:
          result = []
          for user in self._users.values():
              listened = []
+             # Collect all the tracks the user has listened to
              for session in self._sessions:
                  if session.user == user:
                      if session.track not in listened:
@@ -224,6 +230,7 @@ class StreamingPlatform:
                  if len(album.tracks) == 0:
                      continue
                  all_listened = True
+                 # Checking: Have all the tracks on the album been listened to?
                  for track in album.tracks:
                      if track not in listened:
                          all_listened = False

@@ -15,8 +15,8 @@ if TYPE_CHECKING:
 
 class Album:
 
-    def __init__(self, id: str, title: str, artist: "Artist", release_year: int) -> None :
-        self.album_id: str = id
+    def __init__(self, album_id, title: str, artist: "Artist", release_year: int) -> None :
+        self.album_id = album_id
         self.title: str = title
         self.artist: Artist = artist
         self.release_year: int = release_year
@@ -30,6 +30,7 @@ class Album:
 
     def track_ids(self) -> set[str]:
         return set(i.track_id for i in self.tracks)
+
     def duration_seconds(self) -> int:
         return sum(i.duration_seconds for i in self.tracks)
 

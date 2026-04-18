@@ -12,8 +12,8 @@ if TYPE_CHECKING:
 #from .tracks import Track
 
 class Artist:
-    def __init__(self, id: str, name: str, genre: str) -> None:
-        self.artist_id: str = id
+    def __init__(self, artist_id, name: str, genre: str) -> None:
+        self.artist_id = artist_id
         self.name:str = name
         self.genre = genre
         self.tracks: list["Track"] = []
