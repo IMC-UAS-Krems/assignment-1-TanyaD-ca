@@ -19,7 +19,7 @@ class ListeningSession:
         self.session_id = session_id
         self.user = user
         self.track = track
-        self.timestamp = timestamp
+        self.timestamp: datetime = timestamp
         self.duration_seconds = duration_seconds
         self.duration_listened_seconds = duration_seconds
         """ I'm running into a conflict in the tests, and I have no idea how to fix the error.

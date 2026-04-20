@@ -56,14 +56,16 @@ class TestTotalListeningTime:
     #       Calculate the expected total based on the fixture data in conftest.py.
     def test_known_period_value(self, platform: StreamingPlatform) -> None:
         from streaming.sessions import ListeningSession
+        from datetime import timedelta
 
         user = platform.get_user("u1")
         track = platform.get_track("t1")
-        s1= ListeningSession(user, track, RECENT, 30)
-        s2= ListeningSession(user, track, RECENT, 90)
+        fixed_time = RECENT
+        s1 = ListeningSession("s1", user, track, fixed_time, 30)
+        s2 = ListeningSession("s2", user, track, fixed_time, 90)
         platform.record_session(s1)
         platform.record_session(s2)
-        start = RECENT - timedelta(minutes = 1)
+        start = RECENT - timedelta(minutes=1)
         end = FIXED_NOW
         result = platform.total_listening_time_minutes(start, end)
         assert result == 2.0
@@ -97,14 +99,18 @@ class TestAvgUniqueTracksPremium:
     #       per premium user and calculate the average.
     def test_correct_value(self, platform: StreamingPlatform) -> None:
         from streaming.sessions import ListeningSession
+        from streaming.users import PremiumUser
+        from datetime import datetime, timedelta
 
         user = platform.get_user("u2")
+        assert isinstance(user, PremiumUser)
         t1 = platform.get_track("t1")
         t2 = platform.get_track("t2")
-        platform.record_session(ListeningSession(user, t1, RECENT, 100))
-        platform.record_session(ListeningSession(user, t2, RECENT, 100))
-        platform.record_session(ListeningSession(user, t1, RECENT, 100))
-        result  = platform.avg_unique_tracks_per_premium_user()
+        now = datetime.now()
+        platform.record_session(ListeningSession("s1", user, t1, now - timedelta(days=1), 60))
+        platform.record_session(ListeningSession("s2", user, t2, now - timedelta(days=1), 80))
+        platform.record_session(ListeningSession("s3", user, t1, now - timedelta(days=1), 69))
+        result = platform.avg_unique_tracks_per_premium_user()
         assert result == 2.0
 
 # ===========================================================================
@@ -134,9 +140,9 @@ class TestTrackMostDistinctListeners:
         u2 = platform.get_user("u2")
         t1= platform.get_track("t1")
         t2 = platform.get_track("t2")
-        platform.record_session(ListeningSession(u1, t1, RECENT, 100))
-        platform.record_session(ListeningSession(u2, t1, RECENT, 100))
-        platform.record_session(ListeningSession(u1, t2, RECENT, 100))
+        platform.record_session(ListeningSession("s1", u1, t1, RECENT, 100))
+        platform.record_session(ListeningSession("s2", u2, t1, RECENT, 100))
+        platform.record_session(ListeningSession("s3", u1, t2, RECENT, 100))
         result = platform.track_with_most_distinct_listeners()
         assert result == t1
 
@@ -174,8 +180,8 @@ class TestAvgSessionDurationByType:
         u1 = platform.get_user("u1")
         u2 = platform.get_user("u2")
         t1 = platform.get_track("t1")
-        platform.record_session(ListeningSession(u1, t1, RECENT, 100))
-        platform.record_session(ListeningSession(u2, t1, RECENT, 200))
+        platform.record_session(ListeningSession("s1", u1, t1, RECENT, 100))
+        platform.record_session(ListeningSession("s2", u2, t1, RECENT, 200))
         result = platform.avg_session_duration_by_user_type()
         types = []
         for i in result:
@@ -215,7 +221,7 @@ class TestUnderageSubUserListening:
         t1 = platform.get_track("t1")
         child = FamilyMember("u3", "Kid", age = 15)
         platform.add_user(child)
-        platform.record_session(ListeningSession(child, t1, RECENT, 120))
+        platform.record_session(ListeningSession("s1", child, t1, RECENT, 120))
         result = platform.total_listening_time_underage_sub_users_minutes()
         assert result == 2.0
 
@@ -226,7 +232,7 @@ class TestUnderageSubUserListening:
         t1 = platform.get_track("t1")
         child = FamilyMember("u3", "Kid", age=17)
         platform.add_user(child)
-        platform.record_session(ListeningSession(child, t1, RECENT, 120))
+        platform.record_session(ListeningSession("s1", child, t1, RECENT, 120))
         result = platform.total_listening_time_underage_sub_users_minutes(age_threshold=16)
         assert result == 0.0
 
@@ -271,8 +277,8 @@ class TestTopArtistsByListeningTime:
         user = platform.get_user("u1")
         t1 = platform.get_track("t1")
         t2 = platform.get_track("t2")
-        platform.record_session(ListeningSession(user, t1, RECENT, 300))
-        platform.record_session(ListeningSession(user, t1, RECENT, 100))
+        platform.record_session(ListeningSession("s1", user, t1, RECENT, 300))
+        platform.record_session(ListeningSession("s2", user, t1, RECENT, 100))
         result = platform.top_artists_by_listening_time(n=1)
         assert result[0][0].name == "Pixels"
 
@@ -315,8 +321,8 @@ class TestUserTopGenre:
         user = platform.get_user("u1")
         t1 = platform.get_track("t1")
         t2 = platform.get_track("t2")
-        platform.record_session(ListeningSession(user, t1, RECENT, 200))
-        platform.record_session(ListeningSession(user, t1, RECENT, 100))
+        platform.record_session(ListeningSession("s1", user, t1, RECENT, 200))
+        platform.record_session(ListeningSession("s2", user, t1, RECENT, 100))
         genre, percentage = platform.user_top_genre("u1")
         assert genre == "pop"
         assert percentage == 100.0
@@ -439,8 +445,8 @@ class TestUsersWhoCompletedAlbums:
 
         user = platform.get_user("u1")
         album = platform.get_album("alb1")
-        for track in album.tracks:
-            platform.record_session(ListeningSession(user, track, RECENT, 100))
+        for i, track in enumerate(album.tracks):
+            platform.record_session(ListeningSession(f"s{i}", user, track, RECENT, 100))
         completed = platform.users_who_completed_albums()
         assert any(u == user for u, _ in completed) # user1 should be in the list of users who completed the album
 
@@ -449,8 +455,8 @@ class TestUsersWhoCompletedAlbums:
 
         user = platform.get_user("u1")
         album = platform.get_album("alb1")
-        for track in album.tracks:
-            platform.record_session(ListeningSession(user, track, RECENT, 100))
+        for i, track in enumerate(album.tracks):
+            platform.record_session(ListeningSession(f"s{i}", user, track, RECENT, 100))
         result = platform.users_who_completed_albums()
         titles = []
         for u, t in result:
